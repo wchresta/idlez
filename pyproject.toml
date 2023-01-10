@@ -1,0 +1,43 @@
+[build-system]
+requires = [
+    "setuptools>=52",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idlez"
+version = "0.0.1"
+authors = [
+  { name="Wanja Chresta", email="idlez@monoid.li" },
+]
+description = "A zombie idle game for Discord"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+[project.urls]
+"Homepage" = "https://github.com/wchresta/idlez"
+"Bug Tracker" = "https://github.com/wcchresta/idlez/issues"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+[project.scripts]
+idlez = "idlez.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["idlez"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=. --cov-report=term-missing"
+testpaths = ["tests"]
