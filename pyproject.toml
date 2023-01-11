@@ -15,13 +15,13 @@ description = "A zombie idle game for Discord"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
 ]
-[project.urls]
-"Homepage" = "https://github.com/wchresta/idlez"
-"Bug Tracker" = "https://github.com/wcchresta/idlez/issues"
+dependencies = [
+  "discord.py >= 2.0.0"
+]
 
 [project.optional-dependencies]
 dev = [
@@ -35,8 +35,12 @@ test = [
 [project.scripts]
 idlez = "idlez.cli:main"
 
-[tool.setuptools.packages.find]
-include = ["idlez"]
+[project.urls]
+homepage = "https://github.com/wchresta/idlez"
+issues = "https://github.com/wcchresta/idlez/issues"
+
+[tool.setuptools]
+packages = ["idlez"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=. --cov-report=term-missing"

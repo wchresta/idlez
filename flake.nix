@@ -12,7 +12,9 @@
           version = "0.0.1";
           src = ./.;
 
-          checkInputs = [ py.pytest py.pytestcov ];
+          propagatedBuildInputs = with py; [ discordpy ];
+
+          checkInputs = with py; [ pytest pytestcov ];
           checkPhase = ''
             runHook preCheck
             pytest
