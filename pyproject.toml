@@ -40,7 +40,10 @@ homepage = "https://github.com/wchresta/idlez"
 issues = "https://github.com/wcchresta/idlez/issues"
 
 [tool.setuptools]
-packages = ["idlez"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["idlez*"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=. --cov-report=term-missing"

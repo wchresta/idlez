@@ -1,6 +1,9 @@
+import dataclasses
+import enum
+import random
 import discord
 import asyncio
-import typing
+from typing import Any, Mapping
 import pathlib
 
 import idlez.game
@@ -8,11 +11,29 @@ import idlez.store
 from idlez import events
 
 
+class TemplateType(enum.Enum):
+    NEW_PLAYER = "new_player"
+    LEVEL_UP = "level_up"
+    LOUD_NOISE = "loud_noise"
+
+
+@dataclasses.dataclass
+class Template:
+    templates: dict[str, list[str]]
+
+    def fill(self, type: TemplateType, params: Mapping[str, str | int]):
+        ts = self.templates[type.value]
+        t = random.choice(ts)
+        return t.format_map(params)
+
+
 class IdleZBot(discord.Client):
+    game: idlez.game.IdleZ
+    store_path: pathlib.Path
+    template: Template
+
     channel_name: str = "idlez"
     channel: dict[int, discord.TextChannel]
-    store_path: pathlib.Path
-    game: idlez.game.IdleZ
 
     def __init__(
         self,
@@ -20,11 +41,14 @@ class IdleZBot(discord.Client):
         intents: discord.Intents,
         game: idlez.game.IdleZ,
         store_path: pathlib.Path,
-        **kwargs,
+        template: Template,
+        **kwargs: Any,
     ):
         super().__init__(intents=intents, **kwargs)
         self.game = game
         self.store_path = store_path
+        self.template = template
+        self.channel = dict()
 
         game.register_handler(self.on_game_event)
 
@@ -37,7 +61,7 @@ class IdleZBot(discord.Client):
         await self.wait_until_ready()
         last_tick = discord.utils.utcnow()
         while not self.is_closed():
-            await asyncio.sleep(5)  # Sleep 5 seconds
+            await asyncio.sleep(10)  # Sleep some seconds
             now = discord.utils.utcnow()
             diff, last_tick = now - last_tick, now
             await self.game.tick(diff.seconds)
@@ -50,7 +74,6 @@ class IdleZBot(discord.Client):
 
     async def on_ready(self):
         print(f"Logged in as {self.user}")
-        self.channel = dict()
         for guild in self.guilds:
             channel = discord.utils.get(guild.text_channels, name=self.channel_name)
             if channel:
@@ -67,7 +90,10 @@ class IdleZBot(discord.Client):
         if message.author.bot or message.author.system:
             # Ignore bots and system users
             return
-        idlez_channel = self.channel.get(message.guild)
+        if not message.guild:
+            # Message has no guild, igoring
+            return
+        idlez_channel = self.channel.get(message.guild.id)
         if not idlez_channel:
             # Guild does not have an idlez channel set up.
             return
@@ -85,7 +111,7 @@ class IdleZBot(discord.Client):
         player_id = message.author.id
 
         print(
-            f"{message.author.name}#{message.author.discriminator} has said something in {message.channel.name}: {message.content}"
+            f"{message.author.name}#{message.author.discriminator} has said something: {message.content}"
         )
 
         try:
@@ -93,9 +119,22 @@ class IdleZBot(discord.Client):
                 idlez.game.NoiseType.SPEAK, player_id=player_id, message=message.content
             )
         except idlez.game.PlayerNotFound:
+            author = message.author
+            nick = None
+            if isinstance(author, discord.Member):
+                nick = author.nick
+            if not nick:
+                nick = f"{author.name}#{author.discriminator}"
+
+            if not message.guild:
+                print(
+                    "Cannot register user {nick} because message has no guild: {message}"
+                )
+                return
+
             player = idlez.game.Player(
                 id=player_id,
-                name=message.author.nick,
+                name=nick,
                 experience=0,
                 level=0,
                 guild_id=message.guild.id,
@@ -110,19 +149,66 @@ class IdleZBot(discord.Client):
         if isinstance(evt, events.NewPlayerEvent):
             await self.send_to_player_group(
                 evt.player,
-                f"Your group hears a noise! After a closer look, {evt.player.name} peaks their head out. You fear the Z's might have heard them. Everyone loses {evt.exp_loss//10} experience.",
+                self.template.fill(
+                    TemplateType.NEW_PLAYER,
+                    {"player_name": evt.player.name, "exp_loss": evt.exp_loss},
+                ),
             )
         elif isinstance(evt, events.LevelUpEvent):
+            total_secs_to_next_level = self.game.experience_for_level(
+                evt.player.level + 1
+            )
+            secs_to_next_level = total_secs_to_next_level - evt.player.experience
             await self.send_to_player_group(
                 evt.player,
-                f"The hiding from Z's paid off. Their experience took {evt.player.name} to level {evt.player.level}.",
+                self.template.fill(
+                    TemplateType.LEVEL_UP,
+                    {
+                        "player_name": evt.player.name,
+                        "new_level": evt.player.level,
+                        "ttl": human_secs(secs_to_next_level),
+                    },
+                ),
             )
         elif isinstance(evt, events.BadPlayerEvent):
             if evt.event_type == events.EventType.LOUD_NOISE:
                 await self.send_to_player_group(
                     evt.player,
-                    f"{evt.player.name} trips on a bucket and falls into some metal junk. A terrible noise is heard and causes everyone to need to drop rations. Everyone loses {evt.exp_loss//10} experience.",
+                    self.template.fill(
+                        TemplateType.LOUD_NOISE,
+                        {"player_name": evt.player.name, "exp_loss": evt.exp_loss},
+                    ),
                 )
+
+
+def human_secs(secs: int) -> str:
+    MIN_SECS = 60
+    HOUR_SECS = 60 * MIN_SECS
+    DAY_SECS = 24 * HOUR_SECS
+
+    days = secs // DAY_SECS
+    secs -= days * DAY_SECS
+    hours = secs // HOUR_SECS
+    secs -= hours * HOUR_SECS
+    mins = secs // MIN_SECS
+    secs -= mins * MIN_SECS
+
+    def pluralize(n: int, word: str) -> str:
+        if n == 1:
+            return f"1 {word}"
+        return f"{n} {word}s"
+
+    parts: list[str] = []
+    if days > 0:
+        parts.append(pluralize(days, "day"))
+    if hours > 0:
+        parts.append(pluralize(hours, "hour"))
+    if mins > 0:
+        parts.append(pluralize(mins, "minute"))
+    if secs > 0:
+        parts.append(pluralize(secs, "second"))
+
+    return ", ".join(parts)
 
 
 def make_intents() -> discord.Intents:
@@ -136,6 +222,9 @@ def run(
     intents: discord.Intents,
     game: idlez.game.IdleZ,
     store_path: pathlib.Path,
+    template: Template,
 ) -> None:
-    client = IdleZBot(intents=intents, game=game, store_path=store_path)
+    client = IdleZBot(
+        intents=intents, game=game, store_path=store_path, template=template
+    )
     client.run(token)

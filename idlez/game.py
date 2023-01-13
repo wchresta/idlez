@@ -1,4 +1,5 @@
 import dataclasses
+import math
 from typing import Any, Optional, Callable
 import enum
 import asyncio
@@ -45,6 +46,7 @@ class Emitter:
 @dataclasses.dataclass
 class IdleZ(Emitter):
     store: Store
+    _exp_for_level: dict[int, int] = dataclasses.field(default_factory=dict, init=False)
 
     def player(self, uid: int) -> Optional[Player]:
         return self.store.players.get(uid)
@@ -77,29 +79,46 @@ class IdleZ(Emitter):
 
     def gain_experience(self, player_id: int, amount: int) -> None:
         player = self.player(player_id)
+        if not player:
+            return
         player.experience += amount
 
         if self.experience_for_level(player.level + 1) <= player.experience:
             self.level_up(player.id)
 
-    def level_up(self, player_id):
+    def level_up(self, player_id: int) -> None:
         player = self.player(player_id)
+        if not player:
+            return
         player.level += 1
 
         self.emit(events.LevelUpEvent(player))
 
     def lose_experience(self, player_id: int, amount: int) -> None:
-        self.player(player_id).experience -= amount
+        player = self.player(player_id)
+        if not player:
+            return
+        lower_bound = self.experience_for_level(player.level)
+        player.experience = max(lower_bound, player.experience - amount)
 
     async def tick(self, seconds_diff: int) -> None:
         for player in self.store.players.values():
             self.gain_experience(player.id, seconds_diff)
         await self.send_events()
 
-    @staticmethod
-    def experience_for_level(lvl: int) -> int:
-        base = 6000  # 10 minutes
-        step = 1.16
-        if lvl <= 60:
-            return base * step**lvl
-        return base * step**60 + (864000 * (lvl - 60))
+    def experience_for_level(self, lvl: int) -> int:
+        base = 600  # 10 minutes
+
+        if lvl == 0:
+            return 0
+        if lvl == 1:
+            return base
+
+        cached = self._exp_for_level.get(lvl)
+        if cached is not None:
+            return cached
+
+        lower_level_exp = self.experience_for_level(lvl - 1)
+        step = 1.05 + math.exp(-lvl / 10)
+
+        return int(lower_level_exp * step)

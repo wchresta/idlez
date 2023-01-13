@@ -14,12 +14,14 @@
 
           propagatedBuildInputs = with py; [ discordpy ];
 
-          checkInputs = with py; [ pytest pytestcov ];
+          checkInputs = with py; [ pytest pytestcov mypy ];
           checkPhase = ''
             runHook preCheck
             pytest
+            mypy -p idlez
             runHook postCheck
           '';
+          doCheck = false;
         };
       in {
         packages = {
@@ -31,6 +33,9 @@
           inputsFrom = [ idlez ];
           buildInputs = with pkgs; [
             black
+            py.pytest
+            py.pytestcov
+            py.mypy
           ];
         };
       });

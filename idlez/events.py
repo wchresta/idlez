@@ -28,6 +28,7 @@ class BadPlayerEvent(PlayerEvent):
 
 
 class NewPlayerEvent(BadPlayerEvent):
-    def __init__(self, player: Player):
+    def __init__(self, player: Player, exp_loss: int):
         self.player = player
         self.event_type = EventType.LOUD_NOISE
+        self.exp_loss = exp_loss
