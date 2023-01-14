@@ -51,6 +51,22 @@ class IdleZBot(discord.Client):
         self.channel = dict()
 
         game.register_handler(self.on_game_event)
+        game.player_idle_state_callback = self.get_player_idle_state
+
+    def get_player_idle_state(
+        self, player_id: int, guild_id: int
+    ) -> idlez.game.IdleState:
+        guild = self.get_guild(guild_id)
+        if not guild:
+            return idlez.game.IdleState.OFFLINE
+        member = guild.get_member(player_id)
+        if not member:
+            return idlez.game.IdleState.OFFLINE
+        if member.status == discord.Status.offline:
+            return idlez.game.IdleState.OFFLINE
+        elif member.status in [discord.Status.online, discord.Status.idle]:
+            return idlez.game.IdleState.ONLINE
+        return idlez.game.IdleState.AWAY
 
     async def setup_hook(self) -> None:
         # Invoke regular idlez ticks
@@ -212,8 +228,7 @@ def human_secs(secs: int) -> str:
 
 
 def make_intents() -> discord.Intents:
-    intents = discord.Intents.default()
-    intents.message_content = True
+    intents = discord.Intents.all()
     return intents
 
 

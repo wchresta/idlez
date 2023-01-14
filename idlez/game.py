@@ -6,7 +6,7 @@ import asyncio
 import random
 
 from idlez import events
-from idlez.store import Player, Store
+from idlez.store import Player, Store, PlayerId, Level, Experience, GuildId
 
 
 class IdleZError(Exception):
@@ -15,7 +15,7 @@ class IdleZError(Exception):
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class PlayerNotFound(IdleZError):
-    player_id: int
+    player_id: PlayerId
 
 
 class NoiseType(enum.Enum):
@@ -43,15 +43,28 @@ class Emitter:
         self.event_handlers.append(handler)
 
 
+class IdleState(enum.Enum):
+    ONLINE = 1
+    AWAY = 2
+    OFFLINE = 3
+
+
 @dataclasses.dataclass
 class IdleZ(Emitter):
     store: Store
-    _exp_for_level: dict[int, int] = dataclasses.field(default_factory=dict, init=False)
+    player_idle_state_callback: Callable[
+        [PlayerId, GuildId], IdleState
+    ] = lambda _p, _g: IdleState.ONLINE
+    _exp_for_level: dict[Level, Experience] = dataclasses.field(
+        default_factory=dict, init=False
+    )
 
-    def player(self, uid: int) -> Optional[Player]:
-        return self.store.players.get(uid)
+    def player(self, player_id: PlayerId) -> Optional[Player]:
+        return self.store.players.get(player_id)
 
-    def make_noise(self, noise_type: NoiseType, player_id: int, message: str) -> None:
+    def make_noise(
+        self, noise_type: NoiseType, player_id: PlayerId, message: str
+    ) -> None:
         player = self.player(player_id)
         if not player:
             raise PlayerNotFound(player_id=player_id)
@@ -73,20 +86,28 @@ class IdleZ(Emitter):
 
         self.emit(events.NewPlayerEvent(player, exp_loss=1200))
 
-    def all_lose_experience(self, amount: int) -> None:
+    def all_lose_experience(self, amount: Experience) -> None:
         for player_id in self.store.players:
             self.lose_experience(player_id=player_id, amount=amount)
 
-    def gain_experience(self, player_id: int, amount: int) -> None:
+    def gain_experience(self, player_id: PlayerId, amount: Experience) -> None:
         player = self.player(player_id)
         if not player:
             return
-        player.experience += amount
+
+        idle_state = self.player_idle_state_callback(player_id, player.guild_id)
+        if idle_state == IdleState.OFFLINE:
+            return
+
+        if idle_state == IdleState.ONLINE:
+            player.experience += amount
+        else:
+            player.experience += random.randint(0, amount)
 
         if self.experience_for_level(player.level + 1) <= player.experience:
             self.level_up(player.id)
 
-    def level_up(self, player_id: int) -> None:
+    def level_up(self, player_id: PlayerId) -> None:
         player = self.player(player_id)
         if not player:
             return
@@ -94,7 +115,7 @@ class IdleZ(Emitter):
 
         self.emit(events.LevelUpEvent(player))
 
-    def lose_experience(self, player_id: int, amount: int) -> None:
+    def lose_experience(self, player_id: PlayerId, amount: Experience) -> None:
         player = self.player(player_id)
         if not player:
             return
@@ -106,7 +127,7 @@ class IdleZ(Emitter):
             self.gain_experience(player.id, seconds_diff)
         await self.send_events()
 
-    def experience_for_level(self, lvl: int) -> int:
+    def experience_for_level(self, lvl: Level) -> Experience:
         base = 600  # 10 minutes
 
         if lvl == 0:
