@@ -1,6 +1,6 @@
 import dataclasses
 import enum
-import random
+import random as _random
 import discord
 import asyncio
 from typing import Any, Mapping
@@ -8,6 +8,7 @@ import pathlib
 
 import idlez.game
 import idlez.store
+from idlez.store import GuildId
 from idlez import events
 
 
@@ -20,10 +21,11 @@ class TemplateType(enum.Enum):
 @dataclasses.dataclass
 class Template:
     templates: dict[str, list[str]]
+    random: _random.Random = dataclasses.field(default_factory=_random.Random)
 
     def fill(self, type: TemplateType, params: Mapping[str, str | int]):
         ts = self.templates[type.value]
-        t = random.choice(ts)
+        t = self.random.choice(ts)
         return t.format_map(params)
 
 
@@ -48,7 +50,7 @@ class IdleZBot(discord.Client):
         self.game = game
         self.store_path = store_path
         self.template = template
-        self.channel = dict()
+        self.channel: dict[GuildId, discord.TextChannel] = dict()
 
         game.register_handler(self.on_game_event)
         game.player_idle_state_callback = self.get_player_idle_state
@@ -162,12 +164,32 @@ class IdleZBot(discord.Client):
         await self.channel[player.guild_id].send(message)
 
     async def on_game_event(self, evt: events.Event) -> None:
+        def exp_loss(exp_loss: events.ExpLossType) -> str:
+            if isinstance(exp_loss, events.ExpLossFix):
+                return str(exp_loss.loss_amount)
+            elif isinstance(exp_loss, events.ExpLossProgress):
+                percent = exp_loss.loss_percent
+                if percent > 0.99:
+                    return "all"
+                elif percent > 0.8:
+                    return "most"
+                elif percent > 0.5:
+                    return "a lot of"
+                elif percent > 0.2:
+                    return "some"
+                else:
+                    return "almost no"
+            return "an unkown amount of"
+
         if isinstance(evt, events.NewPlayerEvent):
             await self.send_to_player_group(
                 evt.player,
                 self.template.fill(
                     TemplateType.NEW_PLAYER,
-                    {"player_name": evt.player.name, "exp_loss": evt.exp_loss},
+                    {
+                        "player_name": evt.player.name,
+                        "exp_loss": exp_loss(evt.exp_loss),
+                    },
                 ),
             )
         elif isinstance(evt, events.LevelUpEvent):
@@ -192,7 +214,10 @@ class IdleZBot(discord.Client):
                     evt.player,
                     self.template.fill(
                         TemplateType.LOUD_NOISE,
-                        {"player_name": evt.player.name, "exp_loss": evt.exp_loss},
+                        {
+                            "player_name": evt.player.name,
+                            "exp_loss": exp_loss(evt.exp_loss),
+                        },
                     ),
                 )
 

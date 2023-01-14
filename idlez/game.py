@@ -3,7 +3,7 @@ import math
 from typing import Any, Optional, Callable
 import enum
 import asyncio
-import random
+import random as _random
 
 from idlez import events
 from idlez.store import Player, Store, PlayerId, Level, Experience, GuildId
@@ -55,6 +55,8 @@ class IdleZ(Emitter):
     player_idle_state_callback: Callable[
         [PlayerId, GuildId], IdleState
     ] = lambda _p, _g: IdleState.ONLINE
+    random: _random.Random = dataclasses.field(default_factory=_random.Random)
+
     _exp_for_level: dict[Level, Experience] = dataclasses.field(
         default_factory=dict, init=False
     )
@@ -68,13 +70,19 @@ class IdleZ(Emitter):
         player = self.player(player_id)
         if not player:
             raise PlayerNotFound(player_id=player_id)
-        player.experience -= player.level
+        player.experience -= self.random.randint(
+            1, self.experience_for_next_level(player_id)
+        )
 
-        if random.random() < 0.05:
-            self.all_lose_experience(5600)
+        if self.random.random() < 0.05:
+            progress_percent = self.random.random()
+            self.all_lose_progress(progress_percent)
+
             self.emit(
                 events.BadPlayerEvent(
-                    player=player, event_type=events.EventType.LOUD_NOISE, exp_loss=5600
+                    player=player,
+                    event_type=events.EventType.LOUD_NOISE,
+                    exp_loss=events.ExpLossProgress(progress_percent),
                 )
             )
 
@@ -82,13 +90,24 @@ class IdleZ(Emitter):
         self.store.players[player.id] = player
 
         # Everyone loses experience if a new player joins
-        self.all_lose_experience(1200)
+        progress_percent = self.random.random() / 2
+        self.all_lose_progress(progress_percent)
 
-        self.emit(events.NewPlayerEvent(player, exp_loss=1200))
+        self.emit(
+            events.NewPlayerEvent(
+                player, exp_loss=events.ExpLossProgress(progress_percent)
+            )
+        )
 
     def all_lose_experience(self, amount: Experience) -> None:
         for player_id in self.store.players:
             self.lose_experience(player_id=player_id, amount=amount)
+
+    def all_lose_progress(self, percent: float) -> None:
+        for player_id in self.store.players:
+            amount = int(percent * self.level_progress(player_id))
+            if amount > 0:
+                self.lose_experience(player_id=player_id, amount=amount)
 
     def gain_experience(self, player_id: PlayerId, amount: Experience) -> None:
         player = self.player(player_id)
@@ -126,6 +145,18 @@ class IdleZ(Emitter):
         for player in self.store.players.values():
             self.gain_experience(player.id, seconds_diff)
         await self.send_events()
+
+    def level_progress(self, player_id: PlayerId) -> Optional[Experience]:
+        player = self.player(player_id)
+        if not player:
+            return
+        return player.experience - self.experience_for_level(player.level)
+
+    def experience_for_next_level(self, player_id: PlayerId) -> Optional[Experience]:
+        player = self.player(player_id)
+        if not player:
+            return
+        return self.experience_for_level(player.level + 1) - player.experience
 
     def experience_for_level(self, lvl: Level) -> Experience:
         base = 600  # 10 minutes
