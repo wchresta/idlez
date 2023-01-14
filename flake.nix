@@ -14,6 +14,9 @@
             version = "0.0.1";
             src = ./.;
 
+            format = "pyproject";
+
+            nativeBuildInputs = with py; [ setuptools ];
             propagatedBuildInputs = with py; [ discordpy ];
 
             checkInputs = with py; [ pytest pytestcov mypy ];
