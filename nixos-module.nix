@@ -18,7 +18,7 @@ in {
       type = types.singleLineStr;
       description = ''File that contains the token string'';
       default = "/private/idlez.token";
-    }
+    };
   };
 
   config = mkIf cfg.enable {
@@ -31,14 +31,14 @@ in {
     users.groups.idlez = {};
 
     systemd.services.idlez = {
-      enable = false;
+      enable = true;
 
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
       path = [ pkgs.idlez ];
 
-      description = "idleZ bot";
+      description = "idlez bot";
       preStart = ''
         if ! test -e ${cfg.dataDir}; then
           mkdir -p ${cfg.dataDir}
