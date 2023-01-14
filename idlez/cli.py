@@ -3,19 +3,35 @@ import sys
 import pathlib
 import json
 import importlib.resources
+from typing import Optional
+import argparse
 
 import idlez
 
 
-def main():
-    load_dotenv()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="idleZ bot")
+    parser.add_argument("--token-file", type=str)
+    parser.add_argument("--data-dir", type=str, default="~/.local/share/idlez")
+    parser.add_argument("--env-file", type=str, default=".env")
+    return parser.parse_args()
 
-    token = os.getenv("IDLEZ_TOKEN")
+
+def main():
+    args = parse_args()
+
+    if args.env_file:
+        load_dotenv(args.env_file)
+
+    token = token_from_token_file(args.token_file)
+    if not token:
+        token = token_from_env(args.env_file)
+
     if not token:
         print("No token found, provide a token through IDLEZ_TOKEN", file=sys.stderr)
         sys.exit(1)
 
-    store_path = pathlib.Path("~/.local/share/idlez/").expanduser()
+    store_path = pathlib.Path(args.data_dir).expanduser()
     store: idlez.game.Store
     try:
         store = idlez.game.Store.load(store_path)
@@ -41,11 +57,23 @@ def main():
     store.save(store_path)
 
 
-def load_dotenv():
-    if not os.path.exists(".env"):
+def token_from_token_file(token_file_path: str) -> Optional[str]:
+    if not token_file_path:
+        return None
+
+    with open(token_file_path) as fh:
+        return fh.readline().strip()
+
+
+def token_from_env(env_file: str) -> Optional[str]:
+    return os.getenv("IDLEZ_TOKEN")
+
+
+def load_dotenv(env_file: str) -> None:
+    if not os.path.exists(env_file):
         return
 
-    with open(".env") as fh:
+    with open(env_file) as fh:
         for line in fh:
             key, val = line.split("=")
             key = key.strip()
