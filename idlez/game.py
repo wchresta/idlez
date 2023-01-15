@@ -71,8 +71,8 @@ class IdleZ(Emitter):
         for player in self.store.players.values():
             self.gain_experience(player.id, seconds_diff)
 
-        # Once every 10 minutes
-        if self.random.random() < 1 * seconds_diff / 600.0:
+        # Once every 30 minutes
+        if self.random.random() < float(seconds_diff) / 1800.0:
             self.single_player_event()
 
         await self.send_events()
