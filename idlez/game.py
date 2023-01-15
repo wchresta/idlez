@@ -5,7 +5,7 @@ import enum
 import asyncio
 import random as _random
 
-from idlez import events
+from idlez import events, data
 from idlez.store import Player, Store, PlayerId, Level, Experience, GuildId
 
 
@@ -52,17 +52,41 @@ class IdleState(enum.Enum):
 @dataclasses.dataclass
 class IdleZ(Emitter):
     store: Store
+    data: data.Data
+
+    data_picker: data.DataPicker = dataclasses.field(init=False)
     player_idle_state_callback: Callable[
         [PlayerId, GuildId], IdleState
     ] = lambda _p, _g: IdleState.ONLINE
-    random: _random.Random = dataclasses.field(default_factory=_random.Random)
 
+    random: _random.Random = dataclasses.field(default_factory=_random.Random)
     _exp_for_level: dict[Level, Experience] = dataclasses.field(
         default_factory=dict, init=False
     )
 
+    def __post_init__(self):
+        self.data_picker = data.DataPicker(self.data)
+
+    async def tick(self, seconds_diff: int) -> None:
+        for player in self.store.players.values():
+            self.gain_experience(player.id, seconds_diff)
+
+        # Once every 10 minutes
+        if self.random.random() < 1 * seconds_diff / 600.0:
+            self.single_player_event()
+
+        await self.send_events()
+
     def player(self, player_id: PlayerId) -> Optional[Player]:
         return self.store.players.get(player_id)
+
+    def online_players(self) -> list[Player]:
+        on_players = []
+        for p in self.store.players.values():
+            idle_state = self.player_idle_state_callback(p.id, p.guild_id)
+            if idle_state in [IdleState.ONLINE, IdleState.AWAY]:
+                on_players.append(p)
+        return on_players
 
     def make_noise(
         self, noise_type: NoiseType, player_id: PlayerId, message: str
@@ -83,6 +107,21 @@ class IdleZ(Emitter):
                     player=player,
                     event_type=events.EventType.LOUD_NOISE,
                     exp_loss=events.ExpLossProgress(progress_percent),
+                )
+            )
+
+    def single_player_event(self) -> None:
+        on_players = self.online_players()
+        if len(on_players) <= 0:
+            return
+        player = self.random.choice(on_players)
+        picked = self.data_picker.pick_single_encounter()
+
+        amount = self.gain_progress(player.id, 0.3 * picked.worth)
+        if amount > 0:
+            self.emit(
+                events.SinglePlayerEvent(
+                    player=player, message=picked.message, gain_amount=amount
                 )
             )
 
@@ -126,6 +165,18 @@ class IdleZ(Emitter):
         if self.experience_for_level(player.level + 1) <= player.experience:
             self.level_up(player.id)
 
+    def gain_progress(self, player_id: PlayerId, percent: float) -> Experience:
+        player = self.player(player_id)
+        if not player:
+            return
+
+        amount = int(percent * self.experience_for_next_level(player_id))
+        if not amount > 0:
+            return 0
+
+        self.gain_experience(player_id, amount)
+        return amount
+
     def level_up(self, player_id: PlayerId) -> None:
         player = self.player(player_id)
         if not player:
@@ -140,11 +191,6 @@ class IdleZ(Emitter):
             return
         lower_bound = self.experience_for_level(player.level)
         player.experience = max(lower_bound, player.experience - amount)
-
-    async def tick(self, seconds_diff: int) -> None:
-        for player in self.store.players.values():
-            self.gain_experience(player.id, seconds_diff)
-        await self.send_events()
 
     def level_progress(self, player_id: PlayerId) -> Optional[Experience]:
         player = self.player(player_id)

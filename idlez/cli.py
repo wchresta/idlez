@@ -40,20 +40,13 @@ def main():
         store = idlez.game.Store(players=dict())
         store.save(store_path)
 
-    template = idlez.bot.Template(
-        templates=json.loads(
-            importlib.resources.read_text("idlez.data", "messages.json")
-        )
-    )
-    game = idlez.game.IdleZ(store=store, event_handlers=[], event_queue=[])
+    data = idlez.data.Data.from_lib_resources()
+    game = idlez.game.IdleZ(store=store, data=data, event_handlers=[], event_queue=[])
     intents = idlez.bot.make_intents()
-    idlez.bot.run(
-        token=token,
-        intents=intents,
-        game=game,
-        store_path=store_path,
-        template=template,
+    bot = idlez.bot.IdleZBot(
+        intents=intents, game=game, store_path=store_path, data=data
     )
+    bot.run(token)
     store.save(store_path)
 
 

@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# dhall generated
+idlez/data/elements.json
+idlez/data/encounters.json

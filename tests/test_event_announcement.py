@@ -6,7 +6,8 @@ import dataclasses
 import random
 import json
 from idlez import events
-from idlez.bot import IdleZBot, Template
+from idlez.bot import IdleZBot
+from idlez.data import Data
 from idlez.game import IdleZ
 from idlez.store import Player
 
@@ -59,6 +60,14 @@ class NoiseTestCase:
             event=events.LevelUpEvent(PLAYER_1),
             want="level up; player_name=player1, ttl=16 minutes, 47 seconds",
         ),
+        NoiseTestCase(
+            event=events.SinglePlayerEvent(
+                player=PLAYER_1,
+                message="single player {player_name}, time_gain={time_gain}",
+                gain_amount=300,
+            ),
+            want="single player player1, time_gain=5 minutes",
+        ),
     ],
     ids=[
         "noise, exp_loss=300",
@@ -68,10 +77,11 @@ class NoiseTestCase:
         "new player, exp_loss=300",
         "new player, exp_loss=some",
         "level up, new_level=3, ttl=3000",
+        "single_player_event",
     ],
 )
 def test_noise(test_case):
-    templates = {
+    event_messages = {
         "loud_noise": [
             "loud noise; player_name={player_name}, exp_loss={exp_loss}",
         ],
@@ -82,11 +92,11 @@ def test_noise(test_case):
             "level up; player_name={player_name}, ttl={ttl}",
         ],
     }
-    templ = Template(templates)
-    game = IdleZ(store=None, event_queue=[], event_handlers=[])
+    data = Data(event_messages=event_messages, elements=[], encounters=[])
+    game = IdleZ(store=None, data=data, event_queue=[], event_handlers=[])
 
     channel = mock.Mock(send=mock.AsyncMock(spec=discord.TextChannel.send))
-    bot = IdleZBot(game=game, intents=None, store_path=None, template=templ)
+    bot = IdleZBot(game=game, intents=None, store_path=None, data=data)
     bot.channel = {GUILD_ID: channel}
 
     asyncio.run(bot.on_game_event(test_case.event))

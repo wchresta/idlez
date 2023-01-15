@@ -36,6 +36,12 @@ class LevelUpEvent(PlayerEvent):
 
 
 @dataclasses.dataclass
+class SinglePlayerEvent(PlayerEvent):
+    message: str
+    gain_amount: int
+
+
+@dataclasses.dataclass
 class BadPlayerEvent(PlayerEvent):
     event_type: EventType
     exp_loss: ExpLossType

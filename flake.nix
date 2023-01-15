@@ -16,8 +16,14 @@
 
             format = "pyproject";
 
-            nativeBuildInputs = with py; [ setuptools ];
+            nativeBuildInputs = with py; [ setuptools prev.dhall-json ];
             propagatedBuildInputs = with py; [ discordpy ];
+
+            preBuildPhases = [ "buildDhall" ];
+            buildDhall = ''
+              dhall-to-json --file ./idlez/data/encounters.dhall --output ./idlez/data/encounters.json
+              dhall-to-json --file ./idlez/data/elements.dhall --output ./idlez/data/elements.json
+            '';
 
             checkInputs = with py; [ pytest pytestcov mypy ];
             checkPhase = ''

@@ -8,32 +8,16 @@ import pathlib
 
 import idlez.game
 import idlez.store
+import idlez.events as events
 from idlez.store import GuildId
-from idlez import events
-
-
-class TemplateType(enum.Enum):
-    NEW_PLAYER = "new_player"
-    LEVEL_UP = "level_up"
-    LOUD_NOISE = "loud_noise"
-
-
-@dataclasses.dataclass
-class Template:
-    templates: dict[str, list[str]]
-    random: _random.Random = dataclasses.field(default_factory=_random.Random)
-
-    def fill(self, type: TemplateType, params: Mapping[str, str | int]):
-        ts = self.templates[type.value]
-        t = self.random.choice(ts)
-        return t.format_map(params)
 
 
 class IdleZBot(discord.Client):
     game: idlez.game.IdleZ
     store_path: pathlib.Path
-    template: Template
+    data: idlez.data.Data
 
+    data_picker: idlez.data.DataPicker
     channel_name: str = "idlez"
     channel: dict[int, discord.TextChannel]
 
@@ -43,14 +27,15 @@ class IdleZBot(discord.Client):
         intents: discord.Intents,
         game: idlez.game.IdleZ,
         store_path: pathlib.Path,
-        template: Template,
+        data: idlez.data.Data,
         **kwargs: Any,
     ):
         super().__init__(intents=intents, **kwargs)
         self.game = game
         self.store_path = store_path
-        self.template = template
+        self.data = data
         self.channel: dict[GuildId, discord.TextChannel] = dict()
+        self.data_picker = idlez.data.DataPicker(data)
 
         game.register_handler(self.on_game_event)
         game.player_idle_state_callback = self.get_player_idle_state
@@ -184,8 +169,8 @@ class IdleZBot(discord.Client):
         if isinstance(evt, events.NewPlayerEvent):
             await self.send_to_player_group(
                 evt.player,
-                self.template.fill(
-                    TemplateType.NEW_PLAYER,
+                self.data_picker.fill_event_message(
+                    idlez.data.EventType.NEW_PLAYER,
                     {
                         "player_name": evt.player.name,
                         "exp_loss": exp_loss(evt.exp_loss),
@@ -199,8 +184,8 @@ class IdleZBot(discord.Client):
             secs_to_next_level = total_secs_to_next_level - evt.player.experience
             await self.send_to_player_group(
                 evt.player,
-                self.template.fill(
-                    TemplateType.LEVEL_UP,
+                self.data_picker.fill_event_message(
+                    idlez.data.EventType.LEVEL_UP,
                     {
                         "player_name": evt.player.name,
                         "new_level": evt.player.level,
@@ -212,14 +197,24 @@ class IdleZBot(discord.Client):
             if evt.event_type == events.EventType.LOUD_NOISE:
                 await self.send_to_player_group(
                     evt.player,
-                    self.template.fill(
-                        TemplateType.LOUD_NOISE,
+                    self.data_picker.fill_event_message(
+                        idlez.data.EventType.LOUD_NOISE,
                         {
                             "player_name": evt.player.name,
                             "exp_loss": exp_loss(evt.exp_loss),
                         },
                     ),
                 )
+        elif isinstance(evt, events.SinglePlayerEvent):
+            await self.send_to_player_group(
+                evt.player,
+                evt.message.format_map(
+                    {
+                        "player_name": evt.player.name,
+                        "time_gain": human_secs(evt.gain_amount),
+                    }
+                ),
+            )
 
 
 def human_secs(secs: int) -> str:
@@ -255,16 +250,3 @@ def human_secs(secs: int) -> str:
 def make_intents() -> discord.Intents:
     intents = discord.Intents.all()
     return intents
-
-
-def run(
-    token: str,
-    intents: discord.Intents,
-    game: idlez.game.IdleZ,
-    store_path: pathlib.Path,
-    template: Template,
-) -> None:
-    client = IdleZBot(
-        intents=intents, game=game, store_path=store_path, template=template
-    )
-    client.run(token)
