@@ -1,8 +1,6 @@
 import os
 import sys
 import pathlib
-import json
-import importlib.resources
 from typing import Optional
 import argparse
 

@@ -3,8 +3,6 @@ import asyncio
 import discord
 from unittest import mock
 import dataclasses
-import random
-import json
 from idlez import events
 from idlez.bot import IdleZBot
 from idlez.data import Data
@@ -80,7 +78,7 @@ class NoiseTestCase:
         "single_player_event",
     ],
 )
-def test_noise(test_case):
+def test_noise(test_case: NoiseTestCase):
     event_messages = {
         "loud_noise": [
             "loud noise; player_name={player_name}, exp_loss={exp_loss}",
@@ -92,12 +90,12 @@ def test_noise(test_case):
             "level up; player_name={player_name}, ttl={ttl}",
         ],
     }
-    data = Data(event_messages=event_messages, elements=[], encounters=[])
-    game = IdleZ(store=None, data=data, event_queue=[], event_handlers=[])
+    data = Data(event_messages=event_messages, elements=None, encounters=None)  # type: ignore
+    game = IdleZ(store=None, data=data, event_queue=[], event_handlers=[])  # type: ignore
 
-    channel = mock.Mock(send=mock.AsyncMock(spec=discord.TextChannel.send))
-    bot = IdleZBot(game=game, intents=None, store_path=None, data=data)
+    channel = mock.Mock(send=mock.AsyncMock(spec=discord.TextChannel.send))  # type: ignore
+    bot = IdleZBot(game=game, intents=None, store_path=None, data=data)  # type: ignore
     bot.channel = {GUILD_ID: channel}
 
     asyncio.run(bot.on_game_event(test_case.event))
-    channel.send.assert_awaited_once_with(test_case.want)
+    channel.send.assert_awaited_once_with(test_case.want)  # type: ignore

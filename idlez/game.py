@@ -5,7 +5,7 @@ import enum
 import asyncio
 import random as _random
 
-from idlez import events, data
+from idlez import events, data as _data
 from idlez.store import Player, Store, PlayerId, Level, Experience, GuildId
 
 
@@ -52,9 +52,9 @@ class IdleState(enum.Enum):
 @dataclasses.dataclass
 class IdleZ(Emitter):
     store: Store
-    data: data.Data
+    data: _data.Data
 
-    data_picker: data.DataPicker = dataclasses.field(init=False)
+    data_picker: _data.DataPicker = dataclasses.field(init=False)
     player_idle_state_callback: Callable[
         [PlayerId, GuildId], IdleState
     ] = lambda _p, _g: IdleState.ONLINE
@@ -65,7 +65,7 @@ class IdleZ(Emitter):
     )
 
     def __post_init__(self):
-        self.data_picker = data.DataPicker(self.data)
+        self.data_picker = _data.DataPicker(self.data)
 
     async def tick(self, seconds_diff: int) -> None:
         for player in self.store.players.values():
@@ -81,7 +81,7 @@ class IdleZ(Emitter):
         return self.store.players.get(player_id)
 
     def online_players(self) -> list[Player]:
-        on_players = []
+        on_players: list[Player] = []
         for p in self.store.players.values():
             idle_state = self.player_idle_state_callback(p.id, p.guild_id)
             if idle_state in [IdleState.ONLINE, IdleState.AWAY]:
@@ -94,9 +94,9 @@ class IdleZ(Emitter):
         player = self.player(player_id)
         if not player:
             raise PlayerNotFound(player_id=player_id)
-        player.experience -= self.random.randint(
-            1, self.experience_for_next_level(player_id)
-        )
+        exp_for_next_lvl = self.experience_for_next_level(player_id)
+        if exp_for_next_lvl is not None:
+            player.experience -= self.random.randint(1, exp_for_next_lvl)
 
         if self.random.random() < 0.05:
             progress_percent = self.random.random()
@@ -144,7 +144,10 @@ class IdleZ(Emitter):
 
     def all_lose_progress(self, percent: float) -> None:
         for player_id in self.store.players:
-            amount = int(percent * self.level_progress(player_id))
+            level_progress = self.level_progress(player_id)
+            if level_progress is None:
+                continue
+            amount = int(percent * level_progress)
             if amount > 0:
                 self.lose_experience(player_id=player_id, amount=amount)
 
@@ -160,7 +163,7 @@ class IdleZ(Emitter):
         if idle_state == IdleState.ONLINE:
             player.experience += amount
         else:
-            player.experience += random.randint(0, amount)
+            player.experience += self.random.randint(0, amount)
 
         if self.experience_for_level(player.level + 1) <= player.experience:
             self.level_up(player.id)
@@ -168,9 +171,12 @@ class IdleZ(Emitter):
     def gain_progress(self, player_id: PlayerId, percent: float) -> Experience:
         player = self.player(player_id)
         if not player:
-            return
+            return 0
 
-        amount = int(percent * self.experience_for_next_level(player_id))
+        next_exp = self.experience_for_next_level(player_id)
+        if next_exp is None:
+            return 0
+        amount = int(percent * next_exp)
         if not amount > 0:
             return 0
 

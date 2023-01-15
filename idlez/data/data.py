@@ -1,11 +1,11 @@
+import abc
 import dataclasses
 import collections
 import enum
 import json
 import importlib.resources
-from typing import Mapping
+from typing import Any, Mapping
 import random as _random
-from idlez.store import PlayerId
 
 
 class EncounterType(enum.Enum):
@@ -22,22 +22,27 @@ class EventType(enum.Enum):
     LOUD_NOISE = "loud_noise"
 
 
+class Element(abc.ABC):
+    def format_map(self) -> dict[str, str | int | float]:
+        return dict()
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
-class Loot:
+class Loot(Element):
     a_loot: str
     category: str
     worth: float
 
-    def format_map(self):
+    def format_map(self) -> dict[str, str | int | float]:
         return {"a_loot": self.a_loot, "loot_category": self.category}
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
-class Crate:
+class Crate(Element):
     in_crate: str
     worth: float
 
-    def format_map(self):
+    def format_map(self) -> dict[str, str | int | float]:
         return {"in_crate": self.in_crate}
 
 
@@ -46,7 +51,7 @@ class BodyCrate:
     on_body: str
     worth: float
 
-    def format_map(self):
+    def format_map(self) -> dict[str, str | int | float]:
         return {"on_body": self.on_body}
 
 
@@ -58,7 +63,7 @@ class SingleGainRandomEncounter:
     type: EncounterType = EncounterType.SINGLE_GAIN_RANDOM
 
     @staticmethod
-    def from_dict(edict: dict) -> "SingleGainRandomEncounter":
+    def from_dict(edict: dict[str, Any]) -> "SingleGainRandomEncounter":
         return SingleGainRandomEncounter(
             effect=EffectType(edict["effect"]),
             elements=edict["elements"],
@@ -66,9 +71,7 @@ class SingleGainRandomEncounter:
         )
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
-class EventMessages:
-    event_messages: dict[str, list[str]]
+EventMessages = dict[str, list[str]]
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -78,7 +81,7 @@ class Elements:
     body_crate: list[BodyCrate]
 
     @staticmethod
-    def from_dict(edict: dict) -> "Elements":
+    def from_dict(edict: dict[str, Any]) -> "Elements":
         return Elements(
             loot=[Loot(**l) for l in edict["loot"]],
             crate=[Crate(**c) for c in edict["crate"]],
@@ -90,7 +93,8 @@ class Elements:
 class Encounters:
     single_gain_random: list[SingleGainRandomEncounter]
 
-    def from_dict(edict: dict) -> "Encounters":
+    @staticmethod
+    def from_dict(edict: dict[str, Any]) -> "Encounters":
         return Encounters(
             single_gain_random=[
                 SingleGainRandomEncounter.from_dict(d)
@@ -107,13 +111,13 @@ class Data:
 
     @staticmethod
     def from_lib_resources() -> "Data":
-        def load(file):
+        def load(file: str) -> dict[str, Any]:
             return json.loads(importlib.resources.read_text("idlez.data", file))
 
         return Data(
-            EventMessages(load("event_messages.json")),
-            Elements.from_dict(load("elements.json")),
-            Encounters.from_dict(load("encounters.json")),
+            event_messages=load("event_messages.json"),
+            elements=Elements.from_dict(load("elements.json")),
+            encounters=Encounters.from_dict(load("encounters.json")),
         )
 
 
@@ -159,7 +163,9 @@ class DataPicker:
             worth=combined_worth,
         )
 
-    def fill_event_message(self, type: EventType, params: Mapping[str, str | int]):
+    def fill_event_message(
+        self, type: EventType, params: Mapping[str, str | int]
+    ) -> str:
         ts = self.data.event_messages[type.value]
         t = self.random.choice(ts)
         return t.format_map(params)
