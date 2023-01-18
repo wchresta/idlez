@@ -168,4 +168,4 @@ class DataPicker:
     ) -> str:
         ts = self.data.event_messages[type.value]
         t = self.random.choice(ts)
-        return t.format_map(params)
+        return t.format_map(params).capitalize()
