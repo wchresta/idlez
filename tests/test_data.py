@@ -18,7 +18,7 @@ def test_data_picker_fill_event_message():
                 ]
             },
             elements=idlez.data.Elements(loot=[], crate=[], body_crate=[]),
-            encounters=idlez.data.Encounters(single_gain_random=[]),
+            encounters=idlez.data.Encounters(single_gain_random=[], player_fight=[]),
         )
     )
 

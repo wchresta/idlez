@@ -47,6 +47,18 @@ class BadPlayerEvent(PlayerEvent):
     exp_loss: ExpLossType
 
 
+@dataclasses.dataclass
+class TwoPlayerEvent(PlayerEvent):
+    other_player: Player
+
+
+@dataclasses.dataclass
+class PlayerFightEvent(TwoPlayerEvent):
+    player_wins: bool
+    player_exp_diff_amount: int
+    other_player_exp_diff_amount: int
+
+
 class NewPlayerEvent(BadPlayerEvent):
     def __init__(self, player: Player, exp_loss: ExpLossType):
         self.player = player

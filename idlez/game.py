@@ -71,9 +71,12 @@ class IdleZ(Emitter):
         for player in self.store.players.values():
             self.gain_experience(player.id, seconds_diff)
 
-        # Once every 30 minutes
+        # Once every 30 minutes, 1 player event
+        # Once every hour, 2 player event
         if self.random.random() < float(seconds_diff) / 1800.0:
             self.single_player_event()
+        elif self.random.random() < float(seconds_diff) / 3600.0:
+            self.two_player_event()
 
         await self.send_events()
 
@@ -125,6 +128,46 @@ class IdleZ(Emitter):
                 )
             )
 
+    def two_player_event(self) -> None:
+        on_players = self.online_players()
+        if len(on_players) <= 0:
+            return
+        player = self.random.choice(on_players)
+
+        other_player = self.random.choice(
+            [p for p in self.store.players.values() if p != player]
+        )
+
+        # Half the time, switch online player with maybe offline player
+        if self.random.random() > 0.5:
+            player, other_player = other_player, player
+
+        success = self.random.random() * player.level > other_player.level / 2
+        exp_diff = abs(player.experience - other_player.experience)
+        if success:
+            player_exp_diff_amount = exp_diff // 5
+            other_player_exp_diff_amount = -(exp_diff // 20)
+        else:
+            player_exp_diff_amount = -(exp_diff // 20)
+            other_player_exp_diff_amount = exp_diff // 20
+
+        self.gain_experience(
+            player.id, player_exp_diff_amount, gain_offline_experience=True
+        )
+        self.gain_experience(
+            other_player.id, other_player_exp_diff_amount, gain_offline_experience=True
+        )
+
+        self.emit(
+            events.PlayerFightEvent(
+                player=player,
+                other_player=other_player,
+                player_wins=success,
+                player_exp_diff_amount=player_exp_diff_amount,
+                other_player_exp_diff_amount=other_player_exp_diff_amount,
+            )
+        )
+
     def new_player(self, player: Player) -> None:
         self.store.players[player.id] = player
 
@@ -138,26 +181,38 @@ class IdleZ(Emitter):
             )
         )
 
-    def all_lose_experience(self, amount: Experience) -> None:
+    def all_gain_experience(self, amount: Experience) -> None:
         for player_id in self.store.players:
-            self.lose_experience(player_id=player_id, amount=amount)
+            self.gain_experience(player_id=player_id, amount=amount)
 
     def all_lose_progress(self, percent: float) -> None:
         for player_id in self.store.players:
             level_progress = self.level_progress(player_id)
             if level_progress is None:
                 continue
-            amount = int(percent * level_progress)
-            if amount > 0:
-                self.lose_experience(player_id=player_id, amount=amount)
+            amount = -int(percent * level_progress)
+            if amount < 0:
+                self.gain_experience(player_id=player_id, amount=amount)
 
-    def gain_experience(self, player_id: PlayerId, amount: Experience) -> None:
+    def gain_experience(
+        self,
+        player_id: PlayerId,
+        amount: Experience,
+        gain_offline_experience: bool = False,
+    ) -> None:
         player = self.player(player_id)
         if not player:
             return
 
+        if amount < 0:
+            # Player is going to lose experience
+            lower_bound = self.experience_for_level(player.level)
+            # Do not lose more experience than experience need for the current level
+            player.experience = max(lower_bound, player.experience + amount)
+            return
+
         idle_state = self.player_idle_state_callback(player_id, player.guild_id)
-        if idle_state == IdleState.OFFLINE:
+        if not gain_offline_experience and idle_state == IdleState.OFFLINE:
             return
 
         if idle_state == IdleState.ONLINE:
@@ -190,13 +245,6 @@ class IdleZ(Emitter):
         player.level += 1
 
         self.emit(events.LevelUpEvent(player))
-
-    def lose_experience(self, player_id: PlayerId, amount: Experience) -> None:
-        player = self.player(player_id)
-        if not player:
-            return
-        lower_bound = self.experience_for_level(player.level)
-        player.experience = max(lower_bound, player.experience - amount)
 
     def level_progress(self, player_id: PlayerId) -> Optional[Experience]:
         player = self.player(player_id)

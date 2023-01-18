@@ -213,6 +213,18 @@ class IdleZBot(discord.Client):
                     }
                 ),
             )
+        elif isinstance(evt, events.PlayerFightEvent):
+            await self.send_to_player_group(
+                player=evt.player,
+                message=self.data_picker.fill_player_fight_message(
+                    player_wins=evt.player_wins,
+                    params={
+                        "player_name": evt.player.name,
+                        "other_player_name": evt.other_player.name,
+                        "time_diff": human_secs(abs(evt.player_exp_diff_amount)),
+                    },
+                ),
+            )
 
 
 def human_secs(secs: int) -> str:

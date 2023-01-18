@@ -72,6 +72,19 @@ class SingleGainRandomEncounter:
         )
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class PlayerFight:
+    success_message: str
+    fail_message: str
+
+    @staticmethod
+    def from_dict(edict: dict[str, Any]) -> "PlayerFight":
+        return PlayerFight(
+            success_message=edict["success_message"],
+            fail_message=edict["fail_message"],
+        )
+
+
 EventMessages = dict[str, list[str]]
 
 
@@ -93,6 +106,7 @@ class Elements:
 @dataclasses.dataclass(frozen=True, slots=True)
 class Encounters:
     single_gain_random: list[SingleGainRandomEncounter]
+    player_fight: list[PlayerFight]
 
     @staticmethod
     def from_dict(edict: dict[str, Any]) -> "Encounters":
@@ -101,6 +115,7 @@ class Encounters:
                 SingleGainRandomEncounter.from_dict(d)
                 for d in edict["single_gain_random"]
             ],
+            player_fight=[PlayerFight.from_dict(d) for d in edict["player_fight"]],
         )
 
 
@@ -168,6 +183,15 @@ class DataPicker:
         ts = self.data.event_messages[type.value]
         t = self.random.choice(ts)
         return eval_template(t, params)
+
+    def fill_player_fight_message(
+        self, player_wins: bool, params: dict[str, str | int]
+    ) -> str:
+        ts = self.data.encounters.player_fight
+        t = self.random.choice(ts)
+        if player_wins:
+            return eval_template(t.success_message, params)
+        return eval_template(t.fail_message, params)
 
 
 TEMPLATE_FORMATTERS: dict[str, Callable[[str], str]] = {
