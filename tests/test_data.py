@@ -14,7 +14,7 @@ def test_data_picker_fill_event_message():
         data=idlez.data.Data(
             event_messages={
                 idlez.data.EventType.LEVEL_UP.value: [
-                    "{player_name} text {new_level}. time: {ttl}"
+                    "{player_name|capitalize} Text {new_level}. time: {ttl|upper}"
                 ]
             },
             elements=idlez.data.Elements(loot=[], crate=[], body_crate=[]),
@@ -31,4 +31,4 @@ def test_data_picker_fill_event_message():
         },
     )
 
-    assert got == "Player_name text 24. time: some time"
+    assert got == "Player_name Text 24. time: SOME TIME"

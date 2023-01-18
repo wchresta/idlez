@@ -5,9 +5,9 @@
         "You turn a corner and there stands {player_name}, smiling at you. They will join you if you give them some of your groups inventory - you agree. This costs you {exp_loss} experience."
     ],
     "level_up": [
-        "The hiding from Z's paid off. Their experience took {player_name} to level {new_level}. {ttl} until the next level.",
-        "With a smack of {player_name}'s shovel, the last Z of the swarm is taken care of. This bravery is enough to lift them to level {new_level}. {ttl} until the next level.",
-        "{player_name} comes back from a very successful run. They were able to refill your camps supplies, which lifts them to level {new_level}. {ttl} until the next level."
+        "The hiding from Z's paid off. Their experience took {player_name} to level {new_level}. {ttl|capitalize} until the next level.",
+        "With a smack of {player_name}'s shovel, the last Z of the swarm is taken care of. This bravery is enough to lift them to level {new_level}. {ttl|capitalize} until the next level.",
+        "{player_name} comes back from a very successful run. They were able to refill your camps supplies, which lifts them to level {new_level}. {ttl|capitalize} until the next level."
     ],
     "loud_noise": [
         "{player_name} trips on a bucket and falls into some metal junk. A terrible noise is heard and causes everyone to need to drop rations. Everyone loses {exp_loss} experience.",

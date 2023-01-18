@@ -1,10 +1,11 @@
 import abc
+from re import findall
 import dataclasses
 import collections
 import enum
 import json
 import importlib.resources
-from typing import Any, Mapping
+from typing import Any, Callable
 import random as _random
 
 
@@ -156,16 +157,35 @@ class DataPicker:
             chosen_elements
         )
 
-        message = enc.message.format_map(combined_format_map)
+        message = eval_template(enc.message, combined_format_map)
 
         return PickedSingleEncounter(
             message=message,
             worth=combined_worth,
         )
 
-    def fill_event_message(
-        self, type: EventType, params: Mapping[str, str | int]
-    ) -> str:
+    def fill_event_message(self, type: EventType, params: dict[str, str | int]) -> str:
         ts = self.data.event_messages[type.value]
         t = self.random.choice(ts)
-        return t.format_map(params).capitalize()
+        return eval_template(t, params)
+
+
+TEMPLATE_FORMATTERS: dict[str, Callable[[str], str]] = {
+    "capitalize": str.capitalize,
+    "upper": str.upper,
+    "lower": str.lower,
+}
+
+
+def eval_template(template: str, params: dict[str, str] | dict[str, str | int]) -> str:
+    form_params = params.copy()
+    for ident_fmt in findall(r"\{([^|}]+\|[^|}]+)\}", template):
+        ident, fmt = ident_fmt.split("|")
+        value = params.get(ident)
+        if value is None:
+            continue
+        formatter = TEMPLATE_FORMATTERS.get(fmt)
+        if formatter is None:
+            continue
+        form_params[ident_fmt] = formatter(str(value))
+    return template.format_map(form_params)
