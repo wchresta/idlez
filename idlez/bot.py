@@ -7,6 +7,7 @@ import idlez.data
 import idlez.game
 import idlez.store
 import idlez.events as events
+import idlez.events.components as components
 from idlez.store import GuildId
 
 
@@ -147,10 +148,10 @@ class IdleZBot(discord.Client):
         await self.channel[player.guild_id].send(message)
 
     async def on_game_event(self, evt: events.Event) -> None:
-        def exp_loss(exp_loss: events.ExpLossType) -> str:
-            if isinstance(exp_loss, events.ExpLossFix):
+        def exp_loss_str(exp_loss: components.ExpLossType) -> str:
+            if isinstance(exp_loss, components.ExpLossFix):
                 return str(exp_loss.loss_amount)
-            elif isinstance(exp_loss, events.ExpLossProgress):
+            elif isinstance(exp_loss, components.ExpLossProgress):
                 percent = exp_loss.loss_percent
                 if percent > 0.99:
                     return "all"
@@ -164,18 +165,7 @@ class IdleZBot(discord.Client):
                     return "almost no"
             return "an unkown amount of"
 
-        if isinstance(evt, events.NewPlayerEvent):
-            await self.send_to_player_group(
-                evt.player,
-                self.data_picker.fill_event_message(
-                    idlez.data.EventType.NEW_PLAYER,
-                    {
-                        "player_name": evt.player.name,
-                        "exp_loss": exp_loss(evt.exp_loss),
-                    },
-                ),
-            )
-        elif isinstance(evt, events.LevelUpEvent):
+        if isinstance(evt, events.LevelUpEvent):
             total_secs_to_next_level = self.game.experience_for_level(
                 evt.player.level + 1
             )
@@ -191,14 +181,22 @@ class IdleZBot(discord.Client):
                     },
                 ),
             )
-        elif isinstance(evt, events.BadPlayerEvent):
+        elif isinstance(evt, (events.NewPlayerEvent, events.PlayerNoiseEvent)):
+            player = evt.component(components.Player).player
+            exp_loss = evt.component(components.AllPlayerExpLoss).exp_loss
+
+            if isinstance(evt, events.NewPlayerEvent):
+                msg_type = idlez.data.EventType.NEW_PLAYER
+            else:
+                msg_type = idlez.data.EventType.LOUD_NOISE
+
             await self.send_to_player_group(
-                evt.player,
-                self.data_picker.fill_event_message(
-                    idlez.data.EventType.LOUD_NOISE,
+                player=player,
+                message=self.data_picker.fill_event_message(
+                    msg_type,
                     {
-                        "player_name": evt.player.name,
-                        "exp_loss": exp_loss(evt.exp_loss),
+                        "player_name": player.name,
+                        "exp_loss": exp_loss_str(exp_loss),
                     },
                 ),
             )

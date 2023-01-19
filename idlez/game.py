@@ -6,7 +6,8 @@ import asyncio
 import random as _random
 
 from idlez import data as _data
-from idlez import events
+import idlez.events as events
+import idlez.events.components as components
 from idlez.store import Player, Store, PlayerId, Level, Experience, GuildId
 
 
@@ -107,9 +108,11 @@ class IdleZ(Emitter):
             self.all_lose_progress(progress_percent)
 
             self.emit(
-                events.BadPlayerEvent(
-                    player=player,
-                    exp_loss=events.ExpLossProgress(progress_percent),
+                events.PlayerNoiseEvent(
+                    components.Player(player=player),
+                    components.AllPlayerExpLoss(
+                        exp_loss=components.ExpLossProgress(progress_percent)
+                    ),
                 )
             )
 
@@ -204,7 +207,10 @@ class IdleZ(Emitter):
 
         self.emit(
             events.NewPlayerEvent(
-                player, exp_loss=events.ExpLossProgress(progress_percent)
+                components.Player(player=player),
+                components.AllPlayerExpLoss(
+                    exp_loss=components.ExpLossProgress(progress_percent)
+                ),
             )
         )
 

@@ -3,6 +3,7 @@ import pytest
 from unittest import mock
 import random as _random
 from idlez import events
+import idlez.events.components as components
 from idlez.data import (
     Data,
     Elements,
@@ -27,16 +28,19 @@ def make_player(id: int, exp: Experience, lvl: Level):
 
 
 @pytest.mark.parametrize(
-    "randint,random,want_evt,want_exp",
+    "randint,random,want_evt",
     [
         (
             [28],
             [0.01, 0.2],
-            events.BadPlayerEvent(
-                make_player(1, 1200 - 28 - int((1200 - 28 - EXP_FOR_LVL_2) * 0.2), 2),
-                events.ExpLossProgress(0.2),
+            events.PlayerNoiseEvent(
+                components.Player(
+                    make_player(
+                        1, 1200 - 28 - int((1200 - 28 - EXP_FOR_LVL_2) * 0.2), 2
+                    )
+                ),
+                components.AllPlayerExpLoss(components.ExpLossProgress(0.2)),
             ),
-            1200 - 28 - int((1200 - 28 - EXP_FOR_LVL_2) * 0.2),
         ),
     ],
 )
@@ -44,7 +48,6 @@ def test_noise_intake(
     randint: list[int],
     random: list[float],
     want_evt: events.Event,
-    want_exp: Experience,
 ):
     fake_random = mock.Mock(
         spec=_random.Random,
@@ -58,7 +61,6 @@ def test_noise_intake(
 
     game.make_noise(NoiseType.SPEAK, 1, "Someone said something")
 
-    assert store.players[1].experience == want_exp
     assert game.event_queue == [want_evt]
 
 

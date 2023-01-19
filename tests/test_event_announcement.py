@@ -3,7 +3,8 @@ import asyncio
 import discord
 from unittest import mock
 import dataclasses
-from idlez import events
+import idlez.events as events
+import idlez.events.components as components
 from idlez.bot import IdleZBot
 from idlez.data import Data
 from idlez.game import IdleZ
@@ -19,31 +20,45 @@ class NoiseTestCase:
     want: str
 
 
+def make_noise(loss: components.ExpLossType):
+    return events.PlayerNoiseEvent(
+        components.Player(PLAYER_1),
+        components.AllPlayerExpLoss(loss),
+    )
+
+
+def make_np(loss: components.ExpLossType):
+    return events.NewPlayerEvent(
+        components.Player(PLAYER_1),
+        components.AllPlayerExpLoss(loss),
+    )
+
+
 @pytest.mark.parametrize(
     "test_case",
     [
         NoiseTestCase(
-            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossFix(300)),
+            event=make_noise(components.ExpLossFix(300)),
             want="loud noise; player_name=player1, exp_loss=300",
         ),
         NoiseTestCase(
-            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossProgress(0.1)),
+            event=make_noise(components.ExpLossProgress(0.1)),
             want="loud noise; player_name=player1, exp_loss=almost no",
         ),
         NoiseTestCase(
-            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossProgress(0.999)),
+            event=make_noise(components.ExpLossProgress(0.999)),
             want="loud noise; player_name=player1, exp_loss=all",
         ),
         NoiseTestCase(
-            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossProgress(0.55)),
+            event=make_noise(components.ExpLossProgress(0.55)),
             want="loud noise; player_name=player1, exp_loss=a lot of",
         ),
         NoiseTestCase(
-            event=events.NewPlayerEvent(PLAYER_1, events.ExpLossFix(300)),
+            event=make_np(components.ExpLossFix(300)),
             want="new player; player_name=player1, exp_loss=300",
         ),
         NoiseTestCase(
-            event=events.NewPlayerEvent(PLAYER_1, events.ExpLossProgress(0.3)),
+            event=make_np(components.ExpLossProgress(0.3)),
             want="new player; player_name=player1, exp_loss=some",
         ),
         NoiseTestCase(
