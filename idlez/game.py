@@ -143,20 +143,47 @@ class IdleZ(Emitter):
             player, other_player = other_player, player
 
         success = self.random.random() * player.level > other_player.level / 2
-        exp_diff = abs(player.experience - other_player.experience)
-        if success:
-            player_exp_diff_amount = exp_diff // 5
-            other_player_exp_diff_amount = -(exp_diff // 20)
-        else:
-            player_exp_diff_amount = -(exp_diff // 20)
-            other_player_exp_diff_amount = exp_diff // 20
 
-        self.gain_experience(
-            player.id, player_exp_diff_amount, gain_offline_experience=True
-        )
-        self.gain_experience(
-            other_player.id, other_player_exp_diff_amount, gain_offline_experience=True
-        )
+        # >1 if player has more experience than other_player
+        player_percent_diff = player.experience / other_player.experience
+        other_player_percent_diff = 1 / player_percent_diff
+
+        if success:
+            if player.experience > other_player.experience:
+                # Player won, while being the better player
+                # player_percent_diff > 1, other_player_percent_diff < 1
+                player_scale = max(2 - player_percent_diff, 0)
+                other_player_scale = other_player_percent_diff
+            else:
+                # Player won while being the weaker player
+                # player_percent_diff < 1, other_player_percent_diff > 1
+                player_scale = 2 - player_percent_diff
+                other_player_scale = other_player_percent_diff
+
+            player_exp_diff_amount = self.gain_progress(
+                player.id, 0.1 + player_scale * self.random.random() / 5
+            )
+            other_player_exp_diff_amount = self.lose_progress(
+                other_player.id, 0.1 + other_player_scale * self.random.random() / 5
+            )
+        else:
+            if player.experience > other_player.experience:
+                # Player lost, while being the better player
+                # player_percent_diff > 1, other_player_percent_diff < 1
+                player_scale = player_percent_diff
+                other_player_scale = max(2 - other_player_percent_diff, 0)
+            else:
+                # Player lost while being the weaker player
+                # player_percent_diff < 1, other_player_percent_diff > 1
+                player_scale = player_percent_diff
+                other_player_scale = 2 - other_player_percent_diff
+
+            player_exp_diff_amount = self.lose_progress(
+                player.id, 0.1 + player_scale * self.random.random() / 5
+            )
+            other_player_exp_diff_amount = self.gain_progress(
+                other_player.id, 0.1 + other_player_scale * self.random.random() / 5
+            )
 
         self.emit(
             events.PlayerFightEvent(
@@ -187,12 +214,17 @@ class IdleZ(Emitter):
 
     def all_lose_progress(self, percent: float) -> None:
         for player_id in self.store.players:
-            level_progress = self.level_progress(player_id)
-            if level_progress is None:
-                continue
-            amount = -int(percent * level_progress)
-            if amount < 0:
-                self.gain_experience(player_id=player_id, amount=amount)
+            self.lose_progress(player_id, percent)
+
+    def lose_progress(self, player_id: PlayerId, percent: float) -> Experience:
+        level_progress = self.level_progress(player_id)
+        if level_progress is None:
+            return 0
+        amount = -int(percent * level_progress)
+        if not amount < 0:
+            return 0
+        self.gain_experience(player_id=player_id, amount=amount)
+        return amount
 
     def gain_experience(
         self,

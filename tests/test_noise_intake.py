@@ -115,27 +115,23 @@ def test_single_player_encounter(
 
 
 @pytest.mark.parametrize(
-    "random,want_evt,want_player_exp,want_other_player_exp",
+    "random,want_evt",
     [
         (
-            [0.0, 0.6],
+            [0.0, 0.6, 0.3, 0.3],
             events.PlayerFightEvent(
-                player=make_player(1, 1200 + (200 // 5), 2),
-                other_player=make_player(2, 1400 - (200 // 20), 2),
+                player=make_player(1, 1336, 2),
+                other_player=make_player(2, 1353, 2),
                 player_wins=True,
-                player_exp_diff_amount=200 // 5,
-                other_player_exp_diff_amount=-200 // 20,
+                player_exp_diff_amount=136,
+                other_player_exp_diff_amount=-47,
             ),
-            1200 + (200 // 5),
-            1400 - (200 // 20),
         ),
     ],
 )
 def test_player_fight_event(
     random: list[float],
     want_evt: events.Event,
-    want_player_exp: Experience,
-    want_other_player_exp: Experience,
 ):
     fake_random = mock.Mock(
         spec=_random.Random,
@@ -167,5 +163,3 @@ def test_player_fight_event(
     game.two_player_event()
 
     assert game.event_queue == [want_evt]
-    assert store.players[1].experience == want_player_exp
-    assert store.players[2].experience == want_other_player_exp

@@ -21,10 +21,10 @@ in  { single_gain_random =
       ]
     , player_fight =
       [ player_fight
-          "Annoyed and hungry, {player_name} defeats {other_player} in a fist fight, which gains them {time_diff} experience."
-          "Annoyed and hungry, {player_name} gets into a fist fight with {other_player} and loses them {time_diff}."
+          "Annoyed and hungry, {player_name} defeats {other_player_name} in a fist fight, which gains them {time_diff} experience."
+          "Annoyed and hungry, {player_name} gets into a fist fight with {other_player_name} and loses them {time_diff}."
       , player_fight
-          "{player_name} sneaks up on a sleeping {other_player} and steals their shoes, gaining them {time_diff}."
-          "{player_name} is caught trying to sneak up on a sleeping {other_player}. The ensuing beating costs them {time_diff}."
+          "{player_name} sneaks up on a sleeping {other_player_name} and steals their shoes, gaining them {time_diff}."
+          "{player_name} is caught trying to sneak up on a sleeping {other_player_name}. The ensuing beating costs them {time_diff}."
       ]
     }

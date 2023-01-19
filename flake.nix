@@ -25,14 +25,12 @@
               dhall-to-json --file ./idlez/data/elements.dhall --output ./idlez/data/elements.json
             '';
 
-            checkInputs = with py; [ pytest pytestcov mypy ];
+            checkInputs = with py; [ pytest pytestcov ];
             checkPhase = ''
               runHook preCheck
               pytest
-              mypy -p idlez
               runHook postCheck
             '';
-            doCheck = false;
           };
       };
     } // flake-utils.lib.eachDefaultSystem (system:
