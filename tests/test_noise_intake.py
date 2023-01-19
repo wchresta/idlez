@@ -1,4 +1,4 @@
-from idlez.data.data import PlayerFight
+from idlez.data import PlayerFight
 import pytest
 from unittest import mock
 import random as _random

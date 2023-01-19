@@ -5,7 +5,8 @@ import enum
 import asyncio
 import random as _random
 
-from idlez import events, data as _data
+from idlez import data as _data
+from idlez import events
 from idlez.store import Player, Store, PlayerId, Level, Experience, GuildId
 
 
