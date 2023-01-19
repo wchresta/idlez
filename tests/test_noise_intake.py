@@ -34,7 +34,6 @@ def make_player(id: int, exp: Experience, lvl: Level):
             [0.01, 0.2],
             events.BadPlayerEvent(
                 make_player(1, 1200 - 28 - int((1200 - 28 - EXP_FOR_LVL_2) * 0.2), 2),
-                events.EventType.LOUD_NOISE,
                 events.ExpLossProgress(0.2),
             ),
             1200 - 28 - int((1200 - 28 - EXP_FOR_LVL_2) * 0.2),

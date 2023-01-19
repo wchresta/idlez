@@ -192,17 +192,16 @@ class IdleZBot(discord.Client):
                 ),
             )
         elif isinstance(evt, events.BadPlayerEvent):
-            if evt.event_type == events.EventType.LOUD_NOISE:
-                await self.send_to_player_group(
-                    evt.player,
-                    self.data_picker.fill_event_message(
-                        idlez.data.EventType.LOUD_NOISE,
-                        {
-                            "player_name": evt.player.name,
-                            "exp_loss": exp_loss(evt.exp_loss),
-                        },
-                    ),
-                )
+            await self.send_to_player_group(
+                evt.player,
+                self.data_picker.fill_event_message(
+                    idlez.data.EventType.LOUD_NOISE,
+                    {
+                        "player_name": evt.player.name,
+                        "exp_loss": exp_loss(evt.exp_loss),
+                    },
+                ),
+            )
         elif isinstance(evt, events.SinglePlayerEvent):
             await self.send_to_player_group(
                 evt.player,

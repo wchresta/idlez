@@ -23,27 +23,19 @@ class NoiseTestCase:
     "test_case",
     [
         NoiseTestCase(
-            event=events.BadPlayerEvent(
-                PLAYER_1, events.EventType.LOUD_NOISE, events.ExpLossFix(300)
-            ),
+            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossFix(300)),
             want="loud noise; player_name=player1, exp_loss=300",
         ),
         NoiseTestCase(
-            event=events.BadPlayerEvent(
-                PLAYER_1, events.EventType.LOUD_NOISE, events.ExpLossProgress(0.1)
-            ),
+            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossProgress(0.1)),
             want="loud noise; player_name=player1, exp_loss=almost no",
         ),
         NoiseTestCase(
-            event=events.BadPlayerEvent(
-                PLAYER_1, events.EventType.LOUD_NOISE, events.ExpLossProgress(0.999)
-            ),
+            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossProgress(0.999)),
             want="loud noise; player_name=player1, exp_loss=all",
         ),
         NoiseTestCase(
-            event=events.BadPlayerEvent(
-                PLAYER_1, events.EventType.LOUD_NOISE, events.ExpLossProgress(0.55)
-            ),
+            event=events.BadPlayerEvent(PLAYER_1, events.ExpLossProgress(0.55)),
             want="loud noise; player_name=player1, exp_loss=a lot of",
         ),
         NoiseTestCase(

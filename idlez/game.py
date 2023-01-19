@@ -108,7 +108,6 @@ class IdleZ(Emitter):
             self.emit(
                 events.BadPlayerEvent(
                     player=player,
-                    event_type=events.EventType.LOUD_NOISE,
                     exp_loss=events.ExpLossProgress(progress_percent),
                 )
             )
