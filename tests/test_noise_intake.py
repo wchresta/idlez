@@ -14,7 +14,7 @@ from idlez.data import (
     SingleGainRandomEncounter,
     EffectType,
 )
-from idlez.game import IdleZ, NoiseType
+from idlez.game import IdleZ
 from idlez.store import Experience, Level, Store, Player
 
 GUILD_ID = 10
@@ -59,28 +59,33 @@ def test_noise_intake(
         store=store, data=None, event_queue=[], event_handlers=[], random=fake_random  # type: ignore
     )
 
-    game.make_noise(NoiseType.SPEAK, 1, "Someone said something")
+    game.make_noise(1)
 
     assert game.event_queue == [want_evt]
 
 
 @pytest.mark.parametrize(
-    "random,want_evt,want_exp",
+    "random,want_evt",
     [
         (
             [0.01],
             events.SinglePlayerEvent(
-                make_player(1, 1000 + int((EXP_FOR_LVL_2 - 1000) * 0.3 * 0.2), 1),
-                "{player_name} a_loot in_crate on_body {time_gain}",
-                gain_amount=int((EXP_FOR_LVL_2 - 1000) * 0.3 * 0.2),
+                components.Player(
+                    player=make_player(
+                        1, 1000 + int((EXP_FOR_LVL_2 - 1000) * 0.3 * 0.2), 1
+                    )
+                ),
+                components.EventMessage(
+                    message="{player_name} a_loot in_crate on_body {time_gain}"
+                ),
+                components.ExpEffect(
+                    exp_diffs={1: int((EXP_FOR_LVL_2 - 1000) * 0.3 * 0.2)}
+                ),
             ),
-            1000 + int((EXP_FOR_LVL_2 - 1000) * 0.3 * 0.2),
         ),
     ],
 )
-def test_single_player_encounter(
-    random: list[float], want_evt: events.Event, want_exp: Experience
-):
+def test_single_player_encounter(random: list[float], want_evt: events.Event):
     fake_random = mock.Mock(
         spec=_random.Random,
         random=mock.Mock(side_effect=random),
@@ -111,7 +116,6 @@ def test_single_player_encounter(
 
     game.single_player_event()
 
-    assert store.players[1].experience == want_exp
     assert game.event_queue == [want_evt]
 
 
@@ -121,11 +125,15 @@ def test_single_player_encounter(
         (
             [0.0, 0.6, 0.3, 0.3],
             events.PlayerFightEvent(
-                player=make_player(1, 1336, 2),
-                other_player=make_player(2, 1353, 2),
-                player_wins=True,
-                player_exp_diff_amount=136,
-                other_player_exp_diff_amount=-47,
+                components.Player(player=make_player(1, 1336, 2)),
+                components.OtherPlayer(player=make_player(2, 1353, 2)),
+                components.FightResult(player_wins=True),
+                components.ExpEffect(
+                    exp_diffs={
+                        1: 136,
+                        2: -47,
+                    }
+                ),
             ),
         ),
     ],

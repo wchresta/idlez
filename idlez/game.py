@@ -93,9 +93,7 @@ class IdleZ(Emitter):
                 on_players.append(p)
         return on_players
 
-    def make_noise(
-        self, noise_type: NoiseType, player_id: PlayerId, message: str
-    ) -> None:
+    def make_noise(self, player_id: PlayerId) -> None:
         player = self.player(player_id)
         if not player:
             raise PlayerNotFound(player_id=player_id)
@@ -122,12 +120,14 @@ class IdleZ(Emitter):
             return
         player = self.random.choice(on_players)
         picked = self.data_picker.pick_single_encounter()
-
         amount = self.gain_progress(player.id, 0.3 * picked.worth)
+
         if amount > 0:
             self.emit(
                 events.SinglePlayerEvent(
-                    player=player, message=picked.message, gain_amount=amount
+                    components.Player(player=player),
+                    components.ExpEffect(exp_diffs={player.id: amount}),
+                    components.EventMessage(message=picked.message),
                 )
             )
 
@@ -190,11 +190,15 @@ class IdleZ(Emitter):
 
         self.emit(
             events.PlayerFightEvent(
-                player=player,
-                other_player=other_player,
-                player_wins=success,
-                player_exp_diff_amount=player_exp_diff_amount,
-                other_player_exp_diff_amount=other_player_exp_diff_amount,
+                components.Player(player=player),
+                components.OtherPlayer(player=other_player),
+                components.FightResult(player_wins=success),
+                components.ExpEffect(
+                    exp_diffs={
+                        player.id: player_exp_diff_amount,
+                        other_player.id: other_player_exp_diff_amount,
+                    },
+                ),
             )
         )
 
@@ -282,7 +286,7 @@ class IdleZ(Emitter):
             return
         player.level += 1
 
-        self.emit(events.LevelUpEvent(player))
+        self.emit(events.LevelUpEvent(components.Player(player=player)))
 
     def level_progress(self, player_id: PlayerId) -> Optional[Experience]:
         player = self.player(player_id)

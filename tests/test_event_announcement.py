@@ -62,14 +62,16 @@ def make_np(loss: components.ExpLossType):
             want="new player; player_name=player1, exp_loss=some",
         ),
         NoiseTestCase(
-            event=events.LevelUpEvent(PLAYER_1),
+            event=events.LevelUpEvent(components.Player(player=PLAYER_1)),
             want="level up; player_name=player1, ttl=16 minutes, 47 seconds",
         ),
         NoiseTestCase(
             event=events.SinglePlayerEvent(
-                player=PLAYER_1,
-                message="single player {player_name}, time_gain={time_gain}",
-                gain_amount=300,
+                components.Player(player=PLAYER_1),
+                components.ExpEffect(exp_diffs={PLAYER_1.id: 300}),
+                components.EventMessage(
+                    message="single player {player_name}, time_gain={time_gain}"
+                ),
             ),
             want="single player player1, time_gain=5 minutes",
         ),

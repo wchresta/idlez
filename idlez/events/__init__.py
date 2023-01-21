@@ -2,7 +2,6 @@ import abc
 import dataclasses
 from typing import Optional, Type, TypeVar
 
-from idlez.store import Player
 import idlez.events.components as _components
 
 _C = TypeVar("_C", bound=_components.Component)
@@ -10,33 +9,6 @@ _C = TypeVar("_C", bound=_components.Component)
 
 class Event:
     pass
-
-
-@dataclasses.dataclass
-class PlayerEvent(Event):
-    player: Player
-
-
-class LevelUpEvent(PlayerEvent):
-    pass
-
-
-@dataclasses.dataclass
-class SinglePlayerEvent(PlayerEvent):
-    message: str
-    gain_amount: int
-
-
-@dataclasses.dataclass
-class TwoPlayerEvent(PlayerEvent):
-    other_player: Player
-
-
-@dataclasses.dataclass
-class PlayerFightEvent(TwoPlayerEvent):
-    player_wins: bool
-    player_exp_diff_amount: int
-    other_player_exp_diff_amount: int
 
 
 @dataclasses.dataclass(slots=True)
@@ -70,3 +42,20 @@ class PlayerNoiseEvent(ComponentEvent):
 
 class NewPlayerEvent(ComponentEvent):
     needs_components = [_components.Player, _components.AllPlayerExpLoss]
+
+
+class LevelUpEvent(ComponentEvent):
+    needs_components = [_components.Player]
+
+
+class SinglePlayerEvent(ComponentEvent):
+    needs_components = [_components.Player, _components.ExpEffect]
+
+
+class PlayerFightEvent(ComponentEvent):
+    needs_components = [
+        _components.Player,
+        _components.OtherPlayer,
+        _components.FightResult,
+        _components.ExpEffect,
+    ]

@@ -117,9 +117,7 @@ class IdleZBot(discord.Client):
         )
 
         try:
-            self.game.make_noise(
-                idlez.game.NoiseType.SPEAK, player_id=player_id, message=message.content
-            )
+            self.game.make_noise(player_id=player_id)
         except idlez.game.PlayerNotFound:
             author = message.author
             nick = None
@@ -166,17 +164,16 @@ class IdleZBot(discord.Client):
             return "an unkown amount of"
 
         if isinstance(evt, events.LevelUpEvent):
-            total_secs_to_next_level = self.game.experience_for_level(
-                evt.player.level + 1
-            )
-            secs_to_next_level = total_secs_to_next_level - evt.player.experience
+            player = evt.component(components.Player).player
+            total_secs_to_next_level = self.game.experience_for_level(player.level + 1)
+            secs_to_next_level = total_secs_to_next_level - player.experience
             await self.send_to_player_group(
-                evt.player,
+                player,
                 self.data_picker.fill_event_message(
                     idlez.data.EventType.LEVEL_UP,
                     {
-                        "player_name": evt.player.name,
-                        "new_level": evt.player.level,
+                        "player_name": player.name,
+                        "new_level": player.level,
                         "ttl": human_secs(secs_to_next_level),
                     },
                 ),
@@ -201,24 +198,35 @@ class IdleZBot(discord.Client):
                 ),
             )
         elif isinstance(evt, events.SinglePlayerEvent):
+            player = evt.component(components.Player).player
+            player_exp_diff_amount = evt.component(components.ExpEffect).exp_diffs.get(
+                player.id, 0
+            )
+            message = evt.component(components.EventMessage).message
             await self.send_to_player_group(
-                evt.player,
-                evt.message.format_map(
+                player,
+                message.format_map(
                     {
-                        "player_name": evt.player.name,
-                        "time_gain": human_secs(evt.gain_amount),
+                        "player_name": player.name,
+                        "time_gain": human_secs(player_exp_diff_amount),
                     }
                 ),
             )
         elif isinstance(evt, events.PlayerFightEvent):
+            player = evt.component(components.Player).player
+            other_player = evt.component(components.OtherPlayer).player
+            player_wins = evt.component(components.FightResult).player_wins
+            player_exp_diff_amount = evt.component(components.ExpEffect).exp_diffs.get(
+                player.id, 0
+            )
             await self.send_to_player_group(
-                player=evt.player,
+                player=player,
                 message=self.data_picker.fill_player_fight_message(
-                    player_wins=evt.player_wins,
+                    player_wins=player_wins,
                     params={
-                        "player_name": evt.player.name,
-                        "other_player_name": evt.other_player.name,
-                        "time_diff": human_secs(abs(evt.player_exp_diff_amount)),
+                        "player_name": player.name,
+                        "other_player_name": other_player.name,
+                        "time_diff": human_secs(abs(player_exp_diff_amount)),
                     },
                 ),
             )
