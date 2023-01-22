@@ -20,17 +20,17 @@ class NoiseTestCase:
     want: str
 
 
-def make_noise(loss: components.ExpLossType):
+def make_noise(percent: float):
     return events.PlayerNoiseEvent(
         components.Player(PLAYER_1),
-        components.AllPlayerExpLoss(loss),
+        components.ExpProgress({components.ALL_PLAYERS: percent}),
     )
 
 
-def make_np(loss: components.ExpLossType):
+def make_np(percent: float):
     return events.NewPlayerEvent(
         components.Player(PLAYER_1),
-        components.AllPlayerExpLoss(loss),
+        components.ExpProgress({components.ALL_PLAYERS: percent}),
     )
 
 
@@ -38,27 +38,19 @@ def make_np(loss: components.ExpLossType):
     "test_case",
     [
         NoiseTestCase(
-            event=make_noise(components.ExpLossFix(300)),
-            want="loud noise; player_name=player1, exp_loss=300",
-        ),
-        NoiseTestCase(
-            event=make_noise(components.ExpLossProgress(0.1)),
+            event=make_noise(-0.1),
             want="loud noise; player_name=player1, exp_loss=almost no",
         ),
         NoiseTestCase(
-            event=make_noise(components.ExpLossProgress(0.999)),
+            event=make_noise(-0.999),
             want="loud noise; player_name=player1, exp_loss=all",
         ),
         NoiseTestCase(
-            event=make_noise(components.ExpLossProgress(0.55)),
+            event=make_noise(-0.55),
             want="loud noise; player_name=player1, exp_loss=a lot of",
         ),
         NoiseTestCase(
-            event=make_np(components.ExpLossFix(300)),
-            want="new player; player_name=player1, exp_loss=300",
-        ),
-        NoiseTestCase(
-            event=make_np(components.ExpLossProgress(0.3)),
+            event=make_np(-0.3),
             want="new player; player_name=player1, exp_loss=some",
         ),
         NoiseTestCase(
@@ -68,7 +60,7 @@ def make_np(loss: components.ExpLossType):
         NoiseTestCase(
             event=events.SinglePlayerEvent(
                 components.Player(player=PLAYER_1),
-                components.ExpEffect(exp_diffs={PLAYER_1.id: 300}),
+                components.ExpDiff(exp_diffs={PLAYER_1.id: 300}),
                 components.EventMessage(
                     message="single player {player_name}, time_gain={time_gain}"
                 ),
@@ -77,11 +69,9 @@ def make_np(loss: components.ExpLossType):
         ),
     ],
     ids=[
-        "noise, exp_loss=300",
         "noise, exp_loss=almost no",
         "noise, exp_loss=all",
         "noise, exp_loss=a lot of",
-        "new player, exp_loss=300",
         "new player, exp_loss=some",
         "level up, new_level=3, ttl=3000",
         "single_player_event",

@@ -108,8 +108,8 @@ class IdleZ(Emitter):
             self.emit(
                 events.PlayerNoiseEvent(
                     components.Player(player=player),
-                    components.AllPlayerExpLoss(
-                        exp_loss=components.ExpLossProgress(progress_percent)
+                    components.ExpProgress(
+                        exp_progress={components.ALL_PLAYERS: -progress_percent},
                     ),
                 )
             )
@@ -126,7 +126,7 @@ class IdleZ(Emitter):
             self.emit(
                 events.SinglePlayerEvent(
                     components.Player(player=player),
-                    components.ExpEffect(exp_diffs={player.id: amount}),
+                    components.ExpDiff(exp_diffs={player.id: amount}),
                     components.EventMessage(message=picked.message),
                 )
             )
@@ -193,7 +193,7 @@ class IdleZ(Emitter):
                 components.Player(player=player),
                 components.OtherPlayer(player=other_player),
                 components.FightResult(player_wins=success),
-                components.ExpEffect(
+                components.ExpDiff(
                     exp_diffs={
                         player.id: player_exp_diff_amount,
                         other_player.id: other_player_exp_diff_amount,
@@ -212,8 +212,8 @@ class IdleZ(Emitter):
         self.emit(
             events.NewPlayerEvent(
                 components.Player(player=player),
-                components.AllPlayerExpLoss(
-                    exp_loss=components.ExpLossProgress(progress_percent)
+                components.ExpProgress(
+                    exp_progress={components.ALL_PLAYERS: -progress_percent},
                 ),
             )
         )

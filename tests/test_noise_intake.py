@@ -39,7 +39,7 @@ def make_player(id: int, exp: Experience, lvl: Level):
                         1, 1200 - 28 - int((1200 - 28 - EXP_FOR_LVL_2) * 0.2), 2
                     )
                 ),
-                components.AllPlayerExpLoss(components.ExpLossProgress(0.2)),
+                components.ExpProgress({components.ALL_PLAYERS: -0.2}),
             ),
         ),
     ],
@@ -78,7 +78,7 @@ def test_noise_intake(
                 components.EventMessage(
                     message="{player_name} a_loot in_crate on_body {time_gain}"
                 ),
-                components.ExpEffect(
+                components.ExpDiff(
                     exp_diffs={1: int((EXP_FOR_LVL_2 - 1000) * 0.3 * 0.2)}
                 ),
             ),
@@ -128,7 +128,7 @@ def test_single_player_encounter(random: list[float], want_evt: events.Event):
                 components.Player(player=make_player(1, 1336, 2)),
                 components.OtherPlayer(player=make_player(2, 1353, 2)),
                 components.FightResult(player_wins=True),
-                components.ExpEffect(
+                components.ExpDiff(
                     exp_diffs={
                         1: 136,
                         2: -47,

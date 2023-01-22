@@ -146,22 +146,17 @@ class IdleZBot(discord.Client):
         await self.channel[player.guild_id].send(message)
 
     async def on_game_event(self, evt: events.Event) -> None:
-        def exp_loss_str(exp_loss: components.ExpLossType) -> str:
-            if isinstance(exp_loss, components.ExpLossFix):
-                return str(exp_loss.loss_amount)
-            elif isinstance(exp_loss, components.ExpLossProgress):
-                percent = exp_loss.loss_percent
-                if percent > 0.99:
-                    return "all"
-                elif percent > 0.8:
-                    return "most"
-                elif percent > 0.5:
-                    return "a lot of"
-                elif percent > 0.2:
-                    return "some"
-                else:
-                    return "almost no"
-            return "an unkown amount of"
+        def progress_str(percent: float) -> str:
+            if percent > 0.99:
+                return "all"
+            elif percent > 0.8:
+                return "most"
+            elif percent > 0.5:
+                return "a lot of"
+            elif percent > 0.2:
+                return "some"
+            else:
+                return "almost no"
 
         if isinstance(evt, events.LevelUpEvent):
             player = evt.component(components.Player).player
@@ -180,7 +175,9 @@ class IdleZBot(discord.Client):
             )
         elif isinstance(evt, (events.NewPlayerEvent, events.PlayerNoiseEvent)):
             player = evt.component(components.Player).player
-            exp_loss = evt.component(components.AllPlayerExpLoss).exp_loss
+            all_exp_progress = evt.component(components.ExpProgress).exp_progress[
+                components.ALL_PLAYERS
+            ]
 
             if isinstance(evt, events.NewPlayerEvent):
                 msg_type = idlez.data.EventType.NEW_PLAYER
@@ -193,22 +190,20 @@ class IdleZBot(discord.Client):
                     msg_type,
                     {
                         "player_name": player.name,
-                        "exp_loss": exp_loss_str(exp_loss),
+                        "exp_loss": progress_str(abs(all_exp_progress)),
                     },
                 ),
             )
         elif isinstance(evt, events.SinglePlayerEvent):
             player = evt.component(components.Player).player
-            player_exp_diff_amount = evt.component(components.ExpEffect).exp_diffs.get(
-                player.id, 0
-            )
+            player_exp_diff = evt.component(components.ExpDiff).exp_diffs[player.id]
             message = evt.component(components.EventMessage).message
             await self.send_to_player_group(
                 player,
                 message.format_map(
                     {
                         "player_name": player.name,
-                        "time_gain": human_secs(player_exp_diff_amount),
+                        "time_gain": human_secs(player_exp_diff),
                     }
                 ),
             )
@@ -216,7 +211,7 @@ class IdleZBot(discord.Client):
             player = evt.component(components.Player).player
             other_player = evt.component(components.OtherPlayer).player
             player_wins = evt.component(components.FightResult).player_wins
-            player_exp_diff_amount = evt.component(components.ExpEffect).exp_diffs.get(
+            player_exp_diff_amount = evt.component(components.ExpDiff).exp_diffs.get(
                 player.id, 0
             )
             await self.send_to_player_group(

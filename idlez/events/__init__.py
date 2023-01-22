@@ -37,11 +37,11 @@ class ComponentEvent(abc.ABC, Event):
 
 
 class PlayerNoiseEvent(ComponentEvent):
-    needs_components = [_components.Player, _components.AllPlayerExpLoss]
+    needs_components = [_components.Player, _components.ExpProgress]
 
 
 class NewPlayerEvent(ComponentEvent):
-    needs_components = [_components.Player, _components.AllPlayerExpLoss]
+    needs_components = [_components.Player, _components.ExpProgress]
 
 
 class LevelUpEvent(ComponentEvent):
@@ -49,7 +49,7 @@ class LevelUpEvent(ComponentEvent):
 
 
 class SinglePlayerEvent(ComponentEvent):
-    needs_components = [_components.Player, _components.ExpEffect]
+    needs_components = [_components.Player, _components.ExpDiff]
 
 
 class PlayerFightEvent(ComponentEvent):
@@ -57,5 +57,5 @@ class PlayerFightEvent(ComponentEvent):
         _components.Player,
         _components.OtherPlayer,
         _components.FightResult,
-        _components.ExpEffect,
+        _components.ExpDiff,
     ]
